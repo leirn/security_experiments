@@ -1,32 +1,32 @@
-use hmac_sha512::HMAC;
 use bcrypt::{hash, verify};
+use hmac_sha512::HMAC;
 
 const SECRET: &[u8; 14] = b"my_secret_test";
 const COST: u32 = 12;
 
 fn main() {
-  let pwd = b"password";
-  let hash = hash_pwd(pwd);
-  let result = verify_pwd(pwd, &hash.as_str()).unwrap();
-  println!("Hello world ! {}", result);
+    let pwd = b"password";
+    let hash = hash_pwd(pwd);
+    let result = verify_pwd(pwd, &hash.as_str()).unwrap();
+    println!("Hello world ! {}", result);
 }
 
 fn hash_pwd(password: &[u8]) -> String {
-  let result = HMAC::mac(password, SECRET);
-  println!("{:?}", result);
-  let bcrypted = hash(result, COST);
-  println!("{:?}", bcrypted);
-  
-  bcrypted.unwrap()
+    let result = HMAC::mac(password, SECRET);
+    println!("{:?}", result);
+    let bcrypted = hash(result, COST);
+    println!("{:?}", bcrypted);
+
+    bcrypted.unwrap()
 }
 
 fn verify_pwd(password: &[u8], ref_hash: &str) -> Result<bool, bcrypt::BcryptError> {
-  let result = HMAC::mac(password, SECRET);
+    let result = HMAC::mac(password, SECRET);
 
-  let bcrypted = verify(result, ref_hash);
-  bcrypted 
+    let bcrypted = verify(result, ref_hash);
+    bcrypted
 }
-  
+
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
