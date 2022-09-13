@@ -1,50 +1,30 @@
-use sha2::Sha256;
-use hmac::{Hmac, Mac};
-use hex_literal::hex;
-use bcrypt::{hash, verify}
+use hmac_sha512::HMAC;
+use bcrypt::{hash, verify};
 
-type HmacSha256 = Hmac<Sha256>;
-
-const SECRET = b"my_secret_test";
+const SECRET: &[u8; 14] = b"my_secret_test";
 const COST: u32 = 12;
 
 fn main() {
-  println!("Hello world !");
+  let pwd = b"password";
+  let hash = hash_pwd(pwd);
+  let result = verify_pwd(pwd, &hash.as_str()).unwrap();
+  println!("Hello world ! {}", result);
 }
 
-fn hash_pwd(password: String) -> String {
-
-  let mut mac = HmacSha256::new_from_slice(SECRET)
-      .expect("HMAC can take key of any size");
-  mac.update(password);
-  // `result` has type `CtOutput` which is a thin wrapper around array of
-  // bytes for providing constant time equality check
-  let result = mac.finalize();
-  // To get underlying array use `into_bytes`, but be careful, since
-  // incorrect use of the code value may permit timing attacks which defeats
-  // the security provided by the `CtOutput`
-  let code_bytes = result.into_bytes();
+fn hash_pwd(password: &[u8]) -> String {
+  let result = HMAC::mac(password, SECRET);
+  println!("{:?}", result);
+  let bcrypted = hash(result, COST);
+  println!("{:?}", bcrypted);
   
-  let bcrypted = hash(code_bytes, COST);
-  
-  crypted
+  bcrypted.unwrap()
 }
 
-fn verify_pwd(password: String, ref_hash: String) -> Result<u32, u32> {
-  
-  let mut mac = HmacSha256::new_from_slice(SECRET)
-      .expect("HMAC can take key of any size");
-  mac.update(password);
-  // `result` has type `CtOutput` which is a thin wrapper around array of
-  // bytes for providing constant time equality check
-  let result = mac.finalize();
-  // To get underlying array use `into_bytes`, but be careful, since
-  // incorrect use of the code value may permit timing attacks which defeats
-  // the security provided by the `CtOutput`
-  let code_bytes = result.into_bytes();
-  
-  let bcrypted = verify(code_bytes, ref_hash);
-  Ok(0)  
+fn verify_pwd(password: &[u8], ref_hash: &str) -> Result<bool, bcrypt::BcryptError> {
+  let result = HMAC::mac(password, SECRET);
+
+  let bcrypted = verify(result, ref_hash);
+  bcrypted 
 }
   
 #[cfg(test)]
@@ -53,20 +33,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_create_hash() {
-        let password = String::new();
-        let hashed = hash_pwd(password);
-        let ref_hash = String::new();
-        assert_eq!(hashed, ref_hash);
+    fn test_verify_hash_ok() {
+        let password = b"password";
+        let ref_hash = "$2b$12$oji1qZRHGv/UTyyT3RTKle69nvwoVERejziE8FICX39CheK7Qy/B6";
+        let result = verify_pwd(password, ref_hash).unwrap();
+        assert_eq!(result, true);
     }
 
     #[test]
-    fn test_verify_hash() {
-        // This assert would fire and test will fail.
-        // Please note, that private functions can be tested too!
-        let password = String::new();
-        let ref_hash = String::new();
-        let result = verify_pwd(password, ref_hash);
-        assert_eq!(verify, Ok(0);
+    fn test_verify_hash_nok() {
+        let not_password = b"not_my_password";
+        let ref_hash = "$2b$12$oji1qZRHGv/UTyyT3RTKle69nvwoVERejziE8FICX39CheK7Qy/B6";
+        let result = verify_pwd(not_password, ref_hash).unwrap();
+        assert_eq!(result, false);
     }
 }
